@@ -33,7 +33,8 @@ var gulp = require('gulp'),
     replace = require('gulp-replace'),
     bump = require('gulp-bump'),
     rename = require('gulp-rename'),
-    handlebars = require('gulp-compile-handlebars');
+    handlebars = require('gulp-compile-handlebars'),
+    swPrecache = require('sw-precache');
 var version = null;
 var triggerData = JSON.parse(fs.readFileSync('data/data.json'));
 
@@ -146,11 +147,17 @@ gulp.task('third_party', function () {
 
 /** Service Worker */
 gulp.task('serviceworker', function () {
-  return gulp.src('./src/scripts/sw.js')
-    .pipe(replace(/@VERSION@/g, version))
-    .pipe(replace(/@PROPERTIES@/g,
-        JSON.stringify(Object.keys(triggerData.data))))
-    .pipe(gulp.dest('./dist/'));
+  return swPrecache.write('./dist/sw.js', {
+    dynamicUrlToDependencies: {
+      'index.html': ['./src/templates/index.hbs']
+    },
+    navigateFallback: 'index.html',
+    navigateFallbackWhitelist: Object.keys(triggerData.data).map(function(p) {
+      return new RegExp('^\/' + p + '$');
+    }),
+    staticFileGlobs: ['./dist/**/*'],
+    stripPrefix: './dist'
+  });
 });
 
 /** Watches */
@@ -286,8 +293,7 @@ gulp.task('getversion', function () {
   }
 })();
 
-var allTasks = ['scripts', 'root', 'html', 'images',
-    'third_party', 'serviceworker'];
+var allTasks = ['scripts', 'root', 'html', 'images', 'third_party'];
 
 gulp.task('bump', function () {
   return gulp.src('./package.json')
@@ -300,10 +306,10 @@ gulp.task('bump', function () {
 gulp.task('default', function () {
   isProd = true;
   return runSequence('clean', 'bump', 'getversion', 'styles',
-      allTasks, 'handlebars');
+      allTasks, 'handlebars', 'serviceworker');
 });
 
 gulp.task('dev', function () {
   return runSequence('clean', 'getversion', 'styles',
-      allTasks, 'handlebars', 'watch');
+      allTasks, 'handlebars', 'watch', 'serviceworker');
 });

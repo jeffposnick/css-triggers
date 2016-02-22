@@ -34,7 +34,7 @@ export default class ServiceWorkerController {
             registration.installing.onstatechange = function (evt) {
 
               if (this.state === 'installed') {
-                console.log('Service Worker Installed (version @VERSION@).');
+                console.log('Service Worker Installed.');
               } else {
                 console.log('New Service Worker state: ', this.state);
               }
